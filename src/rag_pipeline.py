@@ -19,10 +19,18 @@ def build_or_load_vectorstore():
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     
     if os.path.exists(CHROMA_PATH) and os.listdir(CHROMA_PATH):
-        return Chroma(persist_directory=CHROMA_PATH, embedding_function=embeddings)
+        try:
+            return Chroma(persist_directory=CHROMA_PATH, embedding_function=embeddings)
+        except Exception:
+            pass
     
-    # Ingest data
-    loader = DirectoryLoader(DATA_PATH, glob="*.txt", loader_cls=TextLoader)
+    # Ingest data with explicit UTF-8 encoding
+    loader = DirectoryLoader(
+        DATA_PATH, 
+        glob="*.txt", 
+        loader_cls=TextLoader, 
+        loader_kwargs={"encoding": "utf-8"}
+    )
     documents = loader.load()
     
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
