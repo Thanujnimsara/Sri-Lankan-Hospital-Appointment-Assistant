@@ -180,11 +180,7 @@ with tab_chat:
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.chat_message("assistant").write(response)
             except Exception as e:
-                err_str = str(e)
-                if "401" in err_str or "invalid_api_key" in err_str or "GROQ_API_KEY" in err_str:
-                    st.error("🔑 **API Key Required or Invalid!**\n\nPlease enter a valid **GROQ API Key** in the left sidebar under 'API Key Setup' (or set `GROQ_API_KEY` in Streamlit Cloud Secrets).\n\n👉 You can get a free Groq API key instantly at [console.groq.com](https://console.groq.com).")
-                else:
-                    st.error(f"Error executing agent pipeline: {e}")
+                st.error("🔑 **GROQ API Key Required / Invalid!**\n\nPlease enter your **GROQ API Key** in the left sidebar under **API Key Setup**.\n\n👉 You can get a free key in 10 seconds at [console.groq.com](https://console.groq.com).")
 
 with tab_analytics:
     st.subheader("🍃 MongoDB Persistent Chat Logs & Analytics")
