@@ -1,0 +1,9 @@
+Channelling Cancellation, Doctor Delays & Refund Rules:
+- Doctor Delay / Session Cancellation by Hospital:
+  - If a consultant postpones or cancels a scheduled session, patients are notified via SMS/Call.
+  - Options provided: Reschedule for next available session date OR receive a 100% full refund (including hospital fee & doctor fee).
+- Patient-Initiated Cancellation:
+  - Cancellations made prior to 24 hours of session start: Doctor fee is refundable; portal service fee (e.g. LKR 200 - 300) is non-refundable.
+  - Same-day cancellations or No-Shows: Non-refundable according to Sri Lankan hospital policy.
+- Transferring Appointments:
+  - Appointments can often be transferred to another family member's NIC by contacting the hotline at least 3 hours prior to session start.

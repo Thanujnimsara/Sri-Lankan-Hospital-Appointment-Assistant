@@ -1,0 +1,9 @@
+Laboratory Reports Online Retrieval & Collection Procedures:
+- Online Lab Report Access:
+  - Major hospital chains (Asiri, Lanka Hospitals, Nawaloka, Durdans, Hemas) provide digital lab report downloads via their official websites or mobile apps.
+  - Required details for online download: Bill Receipt Number / Lab Reference Number and Patient Mobile Number or PIN printed on the receipt.
+- Physical Collection:
+  - Reports can be collected at 24/7 Laboratory Counters or regional sample collection centers.
+  - Patient or authorized representative must present the original payment receipt or valid ID.
+- Fasting & Preparation Reminders:
+  - Fasting Blood Sugar (FBS) & Lipid Profile: Fasting for 8 - 12 hours required before blood draw. Water is permitted.
