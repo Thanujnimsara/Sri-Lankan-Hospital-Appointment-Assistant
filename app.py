@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+os.environ["PYTHONIOENCODING"] = "utf-8"
 import uuid
 from src.database import get_database_status, get_recent_logs, get_intent_analytics
 

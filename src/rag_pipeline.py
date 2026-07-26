@@ -1,5 +1,8 @@
 import os
-from langchain_community.document_loaders import DirectoryLoader, TextLoader
+import shutil
+from langchain_core.documents import Document
+
+os.environ["PYTHONIOENCODING"] = "utf-8"
 
 try:
     from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -15,6 +18,20 @@ from langchain_community.vectorstores import Chroma
 CHROMA_PATH = "./chroma_db"
 DATA_PATH = "./data"
 
+def load_documents_utf8():
+    documents = []
+    if os.path.exists(DATA_PATH):
+        for filename in sorted(os.listdir(DATA_PATH)):
+            if filename.endswith(".txt"):
+                filepath = os.path.join(DATA_PATH, filename)
+                try:
+                    with open(filepath, "r", encoding="utf-8", errors="replace") as f:
+                        text = f.read()
+                        documents.append(Document(page_content=text, metadata={"source": filename}))
+                except Exception as e:
+                    print(f"Error reading file {filename}: {e}")
+    return documents
+
 def build_or_load_vectorstore():
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     
@@ -22,16 +39,13 @@ def build_or_load_vectorstore():
         try:
             return Chroma(persist_directory=CHROMA_PATH, embedding_function=embeddings)
         except Exception:
-            pass
+            try:
+                shutil.rmtree(CHROMA_PATH)
+            except Exception:
+                pass
     
-    # Ingest data with explicit UTF-8 encoding
-    loader = DirectoryLoader(
-        DATA_PATH, 
-        glob="*.txt", 
-        loader_cls=TextLoader, 
-        loader_kwargs={"encoding": "utf-8"}
-    )
-    documents = loader.load()
+    # Ingest data safely using custom UTF-8 reader with fallback
+    documents = load_documents_utf8()
     
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     chunks = text_splitter.split_documents(documents)
