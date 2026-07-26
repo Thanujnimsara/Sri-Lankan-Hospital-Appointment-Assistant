@@ -1,0 +1,12 @@
+Accepted Payment Methods for Channelling in Sri Lanka:
+- Mobile Network Add-to-Bill:
+  - Dialog: Add booking charges directly to your postpaid monthly bill or deduct from prepaid balance via 990 or Doc990.lk.
+  - Mobitel / SLT: Add booking fee to Mobitel monthly bill via 225 or eChannelling.
+- Digital Wallets & Mobile Money:
+  - eZ Cash: Pay directly using your eZ Cash mobile wallet account on Dialog, Hutch, or Etisalat lines.
+  - mCash: Supported on SLT-Mobitel platforms.
+  - LankaPay QR / Genie / Frimi / FLASH app scanning at checkout.
+- Bank Payment Cards:
+  - Visa, MasterCard, UnionPay, and Amex credit/debit cards issued by any Sri Lankan or international bank.
+- Cash Payments:
+  - Pay cash directly at hospital channelling counters or designated islandwide partner outlets (Cargills Food City, Singer outlets, Abans, Telecommunication agent shops).
