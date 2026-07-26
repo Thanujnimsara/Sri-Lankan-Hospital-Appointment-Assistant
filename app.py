@@ -1,11 +1,17 @@
 import streamlit as st
 import os
+import uuid
+from src.database import get_database_status, get_recent_logs, get_intent_analytics
 
 st.set_page_config(
     page_title="SL Hospital Assistant",
     page_icon="🏥",
     layout="centered"
 )
+
+# Initialize Session ID
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())[:8]
 
 # Custom CSS for rich aesthetics
 st.markdown("""
@@ -75,6 +81,13 @@ st.markdown("""
         align-items: center;
         gap: 8px;
     }
+    .db-card {
+        background: rgba(30, 41, 59, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -84,12 +97,21 @@ if "GROQ_API_KEY" in st.secrets:
 if "OPENROUTER_API_KEY" in st.secrets:
     os.environ["OPENROUTER_API_KEY"] = st.secrets["OPENROUTER_API_KEY"]
 
-# Sidebar for configuration
+# Sidebar for configuration & DB Status
 with st.sidebar:
     st.image("https://img.icons8.com/isometric/100/hospital.png", width=70)
     st.title("Settings & Status")
+    st.caption(f"Session ID: `{st.session_state.session_id}`")
     st.markdown("---")
     
+    # MongoDB Status Indicator
+    db_connected, db_msg = get_database_status()
+    if db_connected:
+        st.success(f"🍃 {db_msg}")
+    else:
+        st.warning(f"⚠️ {db_msg}")
+        
+    st.markdown("---")
     groq_key = st.text_input("GROQ API Key", value=os.environ.get("GROQ_API_KEY", ""), type="password")
     if groq_key:
         os.environ["GROQ_API_KEY"] = groq_key
@@ -108,7 +130,7 @@ with st.sidebar:
     - *How to pay via eZ Cash or Dialog add-to-bill?*
     """)
     st.markdown("---")
-    st.caption("🇱🇰 Sri Lanka Healthcare AI Assistant | Multi-Agent RAG Architecture")
+    st.caption("🇱🇰 Sri Lanka Healthcare AI Assistant | Multi-Agent RAG + MongoDB Architecture")
 
 # Main Header UI
 st.markdown("""
@@ -118,42 +140,67 @@ st.markdown("""
     <div class="badge-container">
         <span class="badge">🤖 Intent Router (Groq Llama 3.1)</span>
         <span class="badge">📚 Vector RAG (ChromaDB)</span>
+        <span class="badge">🍃 Database (MongoDB)</span>
         <span class="badge">✨ Reflection Synthesizer (OpenRouter)</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<div class="emergency-banner">
-    🚨 <b>Emergency Notice:</b> For acute medical emergencies, call free ambulance <b>Suwa Seriya at 1990</b> immediately.
-</div>
-""", unsafe_allow_html=True)
+# Tabs for Chat vs Database Analytics
+tab_chat, tab_analytics = st.tabs(["💬 Assistant Chat", "📊 MongoDB Database & Analytics"])
 
-# Import agent runner dynamically after env key check
-try:
-    from src.agents import run_assistant
-    agents_ready = True
-except Exception as err:
-    agents_ready = False
-    st.warning(f"Note: Agent components loading or key setup required ({err})")
+with tab_chat:
+    st.markdown("""
+    <div class="emergency-banner">
+        🚨 <b>Emergency Notice:</b> For acute medical emergencies, call free ambulance <b>Suwa Seriya at 1990</b> immediately.
+    </div>
+    """, unsafe_allow_html=True)
 
-if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant", "content": "Ayubowan! How can I assist you with your medical appointments, hospital information, or specialist search in Sri Lanka today?"}
-    ]
+    if "messages" not in st.session_state:
+        st.session_state.messages = [
+            {"role": "assistant", "content": "Ayubowan! How can I assist you with your medical appointments, hospital information, or specialist search in Sri Lanka today?"}
+        ]
 
-for msg in st.session_state.messages:
-    st.chat_message(msg["role"]).write(msg["content"])
+    for msg in st.session_state.messages:
+        st.chat_message(msg["role"]).write(msg["content"])
 
-if prompt := st.chat_input("e.g. How do I book a cardiologist at Asiri via eChannelling?"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    st.chat_message("user").write(prompt)
+    if prompt := st.chat_input("e.g. How do I book a cardiologist at Asiri via eChannelling?"):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.chat_message("user").write(prompt)
+        
+        with st.spinner("Consulting Sri Lankan hospital knowledge base & agents..."):
+            try:
+                from src.agents import run_assistant
+                response = run_assistant(prompt, session_id=st.session_state.session_id)
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.chat_message("assistant").write(response)
+            except Exception as e:
+                st.error(f"Error executing agent pipeline: {e}")
+
+with tab_analytics:
+    st.subheader("🍃 MongoDB Persistent Chat Logs & Analytics")
     
-    with st.spinner("Consulting Sri Lankan hospital knowledge base & agents..."):
-        try:
-            from src.agents import run_assistant
-            response = run_assistant(prompt)
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            st.chat_message("assistant").write(response)
-        except Exception as e:
-            st.error(f"Error executing agent pipeline: {e}")
+    analytics = get_intent_analytics()
+    if analytics:
+        st.markdown("#### Intent Distribution")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Appointment Procedures", analytics.get("APPOINTMENT_PROCEDURE", 0))
+        with col2:
+            st.metric("Specialist Match", analytics.get("SPECIALIST_MATCH", 0))
+        with col3:
+            st.metric("Hospital Info", analytics.get("HOSPITAL_INFO", 0))
+    
+    st.markdown("---")
+    st.markdown("#### Recent Database Logs")
+    logs = get_recent_logs(limit=10)
+    if logs:
+        for log in logs:
+            with st.expander(f"🕒 {log.get('timestamp')} | Intent: {log.get('intent')} | Query: {log.get('user_query')[:40]}..."):
+                st.write(f"**Session ID:** `{log.get('session_id')}`")
+                st.write(f"**User Query:** {log.get('user_query')}")
+                st.write(f"**Intent Tag:** `{log.get('intent')}`")
+                st.write(f"**Retrieved Context Snippet:**\n```\n{log.get('retrieved_context')[:300]}...\n```")
+                st.write(f"**Final AI Response:**\n{log.get('final_response')}")
+    else:
+        st.info("No logs currently recorded in MongoDB (or MongoDB container is starting up). Submit a chat query to record your first log!")
