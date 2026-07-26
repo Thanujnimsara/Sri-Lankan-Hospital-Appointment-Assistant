@@ -4,6 +4,7 @@ from langgraph.graph import StateGraph, END
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 from src.rag_pipeline import query_rag
+from src.database import save_chat_log
 
 # State Definition
 class AgentState(TypedDict):
@@ -87,7 +88,7 @@ workflow.add_edge("synthesizer", END)
 
 app_graph = workflow.compile()
 
-def run_assistant(query: str):
+def run_assistant(query: str, session_id: str = "default_session"):
     initial_state = {
         "user_query": query,
         "intent": "",
@@ -95,4 +96,14 @@ def run_assistant(query: str):
         "final_response": ""
     }
     output = app_graph.invoke(initial_state)
+    
+    # Save log to MongoDB database
+    save_chat_log(
+        session_id=session_id,
+        user_query=query,
+        intent=output.get("intent", "UNKNOWN"),
+        retrieved_context=output.get("retrieved_context", ""),
+        response=output.get("final_response", "")
+    )
+    
     return output["final_response"]

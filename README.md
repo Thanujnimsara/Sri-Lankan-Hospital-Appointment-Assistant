@@ -7,7 +7,7 @@ An intelligent, multi-agent Retrieval-Augmented Generation (RAG) assistant desig
 ## 📌 Project Overview
 Navigating the healthcare system in Sri Lanka—whether finding the appropriate medical specialist, understanding booking policies across private providers (Asiri, Lanka Hospitals, Nawaloka, Durdans, Hemas, Suwasewana), or learning government hospital (NHSL) referral procedures—can be confusing for patients.
 
-This project provides an AI-powered appointment assistant utilizing **LangGraph Multi-Agent Workflows**, **ChromaDB Vector Retrieval**, **Groq Fast Routing**, and **OpenRouter Synthesis** to deliver precise, context-aware guidance with built-in emergency disclaimers.
+This project provides an AI-powered appointment assistant utilizing **LangGraph Multi-Agent Workflows**, **ChromaDB Vector Retrieval**, **Groq Fast Routing**, **OpenRouter Synthesis**, and **MongoDB Chat Persistence** to deliver precise, context-aware guidance with built-in emergency disclaimers.
 
 ---
 
@@ -30,6 +30,7 @@ graph TD
     Router -->|Intent Tag| RAG["📚 RAG Retriever Agent\n(ChromaDB VectorStore)"]
     RAG -->|Top-K Context Chunks| Synthesizer["✨ Reflection & Synthesis Agent\n(OpenRouter / GPT-4o-mini)"]
     Synthesizer -->|Structured Response + Safety Disclaimer| Output([💬 Streamlit UI / User])
+    Synthesizer -->|Log Conversation & Metadata| DB[(🍃 MongoDB Database)]
 ```
 
 ---
@@ -55,10 +56,22 @@ graph TD
 
 ---
 
+## 🐳 Docker & MongoDB Architecture
+
+The project is containerized with Docker & Docker Compose:
+- **`app` container**: Streamlit application running on port `8501`.
+- **`mongo` container**: MongoDB 7.0 database running on port `27017` with persistent Docker volume `mongo_data`.
+- **`mongo-express` container**: Web GUI for MongoDB management running on port `8081`.
+
+---
+
 ## 📁 Repository Structure
 
 ```
 sri-lankan-hospital-assistant/
+├── Dockerfile
+├── docker-compose.yml
+├── .dockerignore
 ├── .gitignore
 ├── README.md
 ├── requirements.txt
@@ -66,61 +79,49 @@ sri-lankan-hospital-assistant/
 ├── data/
 │   ├── 01_asiri_hospitals.txt
 │   ├── 02_lanka_hospitals.txt
-│   ├── 03_nawaloka_hospitals.txt
-│   ├── 04_durdans_hospitals.txt
-│   ├── 05_hemas_hospitals.txt
-│   ├── 06_suwasewana_kandy.txt
-│   ├── 07_nhsl_public.txt
-│   ├── 08_echannelling_faq.txt
-│   ├── 09_doc990_faq.txt
-│   ├── 10_payment_methods.txt
-│   ├── 11_specialist_vp.txt
-│   ├── 12_specialist_cardiology.txt
-│   ├── 13_specialist_dermatology.txt
-│   ├── 14_specialist_neurology.txt
-│   ├── 15_specialist_orthopedics.txt
-│   ├── 16_specialist_ent.txt
-│   ├── 17_emergency_1990.txt
-│   ├── 18_channelling_cancellation.txt
-│   ├── 19_senior_citizen_discounts.txt
+│   ├── ... (20 domain text files)
 │   └── 20_lab_reports_collection.txt
 └── src/
     ├── __init__.py
+    ├── database.py
     ├── rag_pipeline.py
     └── agents.py
 ```
 
 ---
 
-## 🚀 How to Run Locally
+## 🚀 How to Run
 
-1. **Clone the repository:**
-   ```bash
-   git clone <your-repo-url>
-   cd sri-lankan-hospital-assistant
-   ```
+### Method 1: Using Docker Compose (Recommended)
 
-2. **Set up Virtual Environment:**
+```bash
+# 1. Set environment variables (or enter in Streamlit sidebar)
+export GROQ_API_KEY="your-groq-api-key"
+export OPENROUTER_API_KEY="your-openrouter-api-key"
+
+# 2. Build and launch containers
+docker-compose up --build
+```
+- Open Web Assistant: `http://localhost:8501`
+- Open Mongo Express DB Manager: `http://localhost:8081`
+
+### Method 2: Local Python Execution
+
+1. **Clone & Virtual Environment:**
    ```bash
    python -m venv venv
-   # On Windows:
+   # Windows:
    venv\Scripts\activate
-   # On macOS/Linux:
+   # macOS/Linux:
    source venv/bin/activate
    ```
 
-3. **Install Dependencies:**
+2. **Install Dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Set Environment Variables (or set in sidebar / `.streamlit/secrets.toml`):**
-   ```bash
-   export GROQ_API_KEY="your-groq-api-key"
-   export OPENROUTER_API_KEY="your-openrouter-api-key"
-   ```
-
-5. **Launch Streamlit App:**
+3. **Launch Streamlit App:**
    ```bash
    streamlit run app.py
    ```
