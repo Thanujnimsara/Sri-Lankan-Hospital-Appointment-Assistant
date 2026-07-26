@@ -14,9 +14,9 @@ class AgentState(TypedDict):
     final_response: str
 
 def get_router_llm():
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
-        raise ValueError("GROQ_API_KEY is not set. Please provide a valid GROQ API key.")
+    api_key = os.environ.get("GROQ_API_KEY", "").strip()
+    if not api_key or api_key.startswith("gsk_...") or api_key == "your-groq-api-key":
+        raise ValueError("GROQ_API_KEY is not set or invalid. Please enter a valid Groq API key (starts with 'gsk_') in the sidebar under Settings.")
     return ChatGroq(
         model="llama-3.1-8b-instant",
         temperature=0,
@@ -24,16 +24,25 @@ def get_router_llm():
     )
 
 def get_synthesis_llm():
-    api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENROUTER_API_KEY (or OPENAI_API_KEY) is not set. Please provide a valid API key.")
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
     
-    base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-    return ChatOpenAI(
-        model="openai/gpt-4o-mini",
-        openai_api_base=base_url,
-        openai_api_key=api_key
-    )
+    # If valid OpenRouter or OpenAI key exists
+    if openrouter_key and not openrouter_key.startswith("sk-or-v1-...") and openrouter_key != "your-openrouter-api-key":
+        base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+        return ChatOpenAI(
+            model="openai/gpt-4o-mini",
+            openai_api_base=base_url,
+            openai_api_key=openrouter_key
+        )
+    elif openai_key:
+        return ChatOpenAI(
+            model="gpt-4o-mini",
+            openai_api_key=openai_key
+        )
+    else:
+        # Fallback to Groq for synthesis if OpenRouter key is not provided
+        return get_router_llm()
 
 # Node 1: Intent Router Agent
 def router_agent(state: AgentState) -> AgentState:

@@ -81,20 +81,20 @@ st.markdown("""
         align-items: center;
         gap: 8px;
     }
-    .db-card {
-        background: rgba(30, 41, 59, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
-# API Keys from Streamlit Secrets or Environment
-if "GROQ_API_KEY" in st.secrets:
+# Helper function to filter placeholder keys
+def is_real_key(val):
+    if not val:
+        return False
+    val = val.strip()
+    return not (val.startswith("gsk_...") or val.startswith("sk-or-v1-...") or "your-" in val or len(val) < 15)
+
+# Load secrets if valid
+if "GROQ_API_KEY" in st.secrets and is_real_key(st.secrets["GROQ_API_KEY"]):
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
-if "OPENROUTER_API_KEY" in st.secrets:
+if "OPENROUTER_API_KEY" in st.secrets and is_real_key(st.secrets["OPENROUTER_API_KEY"]):
     os.environ["OPENROUTER_API_KEY"] = st.secrets["OPENROUTER_API_KEY"]
 
 # Sidebar for configuration & DB Status
@@ -112,13 +112,17 @@ with st.sidebar:
         st.warning(f"⚠️ {db_msg}")
         
     st.markdown("---")
-    groq_key = st.text_input("GROQ API Key", value=os.environ.get("GROQ_API_KEY", ""), type="password")
-    if groq_key:
-        os.environ["GROQ_API_KEY"] = groq_key
+    st.subheader("🔑 API Key Setup")
+    
+    current_groq = os.environ.get("GROQ_API_KEY", "")
+    groq_key = st.text_input("GROQ API Key (Free)", value="" if not is_real_key(current_groq) else current_groq, type="password", help="Get a free key from console.groq.com")
+    if groq_key and is_real_key(groq_key):
+        os.environ["GROQ_API_KEY"] = groq_key.strip()
         
-    openrouter_key = st.text_input("OpenRouter / OpenAI API Key", value=os.environ.get("OPENROUTER_API_KEY", ""), type="password")
-    if openrouter_key:
-        os.environ["OPENROUTER_API_KEY"] = openrouter_key
+    current_openrouter = os.environ.get("OPENROUTER_API_KEY", "")
+    openrouter_key = st.text_input("OpenRouter / OpenAI API Key (Optional)", value="" if not is_real_key(current_openrouter) else current_openrouter, type="password")
+    if openrouter_key and is_real_key(openrouter_key):
+        os.environ["OPENROUTER_API_KEY"] = openrouter_key.strip()
         
     st.markdown("---")
     st.subheader("💡 Sample Queries")
@@ -141,7 +145,7 @@ st.markdown("""
         <span class="badge">🤖 Intent Router (Groq Llama 3.1)</span>
         <span class="badge">📚 Vector RAG (ChromaDB)</span>
         <span class="badge">🍃 Database (MongoDB)</span>
-        <span class="badge">✨ Reflection Synthesizer (OpenRouter)</span>
+        <span class="badge">✨ Reflection Synthesizer (Groq/OpenRouter)</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -175,7 +179,11 @@ with tab_chat:
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.chat_message("assistant").write(response)
             except Exception as e:
-                st.error(f"Error executing agent pipeline: {e}")
+                err_str = str(e)
+                if "401" in err_str or "invalid_api_key" in err_str or "GROQ_API_KEY" in err_str:
+                    st.error("🔑 **API Key Required or Invalid!**\n\nPlease enter a valid **GROQ API Key** in the left sidebar under 'API Key Setup' (or set `GROQ_API_KEY` in Streamlit Cloud Secrets).\n\n👉 You can get a free Groq API key instantly at [console.groq.com](https://console.groq.com).")
+                else:
+                    st.error(f"Error executing agent pipeline: {e}")
 
 with tab_analytics:
     st.subheader("🍃 MongoDB Persistent Chat Logs & Analytics")
