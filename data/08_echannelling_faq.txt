@@ -1,0 +1,13 @@
+eChannelling Booking & Service FAQ:
+- What is eChannelling?
+  - eChannelling is Sri Lanka's pioneer digital health portal (SLT-Mobitel service) connecting patients with over 250+ private and government hospitals nationwide.
+- How to Book via eChannelling:
+  1. Visit www.echannelling.com or open the eChannelling App.
+  2. Search by Doctor Name, Specialization, or Hospital.
+  3. Select available date and appointment number.
+  4. Enter Patient Details (Name, NIC, Mobile Number).
+  5. Complete Payment (Credit/Debit card, Mobitel bill, eZ Cash).
+- Reference Number Verification:
+  - Upon successful booking, an 8-digit Reference Code & Appointment Number is sent via SMS.
+  - Show this SMS or reference slip at the hospital channelling desk to collect your queue token.
+- Customer Support: Dial 225 from any Mobitel line or +94 71 022 5225 from any network.
