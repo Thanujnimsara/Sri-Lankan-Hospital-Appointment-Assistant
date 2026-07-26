@@ -1,10 +1,22 @@
 import os
+import sys
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 from src.rag_pipeline import query_rag
 from src.database import save_chat_log
+
+os.environ["PYTHONIOENCODING"] = "utf-8"
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
+def clean_utf8(text: str) -> str:
+    if not isinstance(text, str):
+        return str(text)
+    return text.encode("utf-8", errors="ignore").decode("utf-8")
 
 # State Definition
 class AgentState(TypedDict):
@@ -27,7 +39,6 @@ def get_synthesis_llm():
     openrouter_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
     
-    # If valid OpenRouter or OpenAI key exists
     if openrouter_key and not openrouter_key.startswith("sk-or-v1-...") and openrouter_key != "your-openrouter-api-key":
         base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         return ChatOpenAI(
@@ -41,12 +52,11 @@ def get_synthesis_llm():
             openai_api_key=openai_key
         )
     else:
-        # Fallback to Groq for synthesis if OpenRouter key is not provided
         return get_router_llm()
 
 # Node 1: Intent Router Agent
 def router_agent(state: AgentState) -> AgentState:
-    query = state["user_query"]
+    query = clean_utf8(state["user_query"])
     prompt = f"""Classify the user input into ONE of these categories:
     - 'APPOINTMENT_PROCEDURE': questions about eChannelling, Doc990, payments, refunds.
     - 'SPECIALIST_MATCH': symptoms or finding the right doctor specialty.
@@ -57,12 +67,12 @@ def router_agent(state: AgentState) -> AgentState:
     
     router_llm = get_router_llm()
     res = router_llm.invoke(prompt)
-    state["intent"] = res.content.strip()
+    state["intent"] = clean_utf8(res.content.strip())
     return state
 
 # Node 2: RAG Retrieval Agent
 def rag_retriever_agent(state: AgentState) -> AgentState:
-    context = query_rag(state["user_query"], k=3)
+    context = clean_utf8(query_rag(state["user_query"], k=3))
     state["retrieved_context"] = context
     return state
 
@@ -80,7 +90,7 @@ def synthesis_agent(state: AgentState) -> AgentState:
     
     synthesis_llm = get_synthesis_llm()
     res = synthesis_llm.invoke(prompt)
-    state["final_response"] = res.content
+    state["final_response"] = clean_utf8(res.content)
     return state
 
 # Construct Graph
@@ -98,21 +108,38 @@ workflow.add_edge("synthesizer", END)
 app_graph = workflow.compile()
 
 def run_assistant(query: str, session_id: str = "default_session"):
+    query = clean_utf8(query)
     initial_state = {
         "user_query": query,
-        "intent": "",
+        "intent": "HOSPITAL_INFO",
         "retrieved_context": "",
         "final_response": ""
     }
-    output = app_graph.invoke(initial_state)
+    
+    try:
+        output = app_graph.invoke(initial_state)
+        final_res = clean_utf8(output.get("final_response", ""))
+        intent_tag = clean_utf8(output.get("intent", "HOSPITAL_INFO"))
+        retrieved_ctx = clean_utf8(output.get("retrieved_context", ""))
+    except Exception as e:
+        err_msg = str(e)
+        if "GROQ_API_KEY" in err_msg or "401" in err_msg or "invalid_api_key" in err_msg:
+            raise e
+        # Safe direct invocation fallback
+        intent_tag = "HOSPITAL_INFO"
+        retrieved_ctx = clean_utf8(query_rag(query, k=3))
+        prompt = f"Context:\n{retrieved_ctx}\n\nUser Query: {query}\nProvide a polite response. Always state: Note: For medical emergencies, call Suwa Seriya at 1990 immediately."
+        llm = get_router_llm()
+        res = llm.invoke(prompt)
+        final_res = clean_utf8(res.content)
     
     # Save log to MongoDB database
     save_chat_log(
         session_id=session_id,
         user_query=query,
-        intent=output.get("intent", "UNKNOWN"),
-        retrieved_context=output.get("retrieved_context", ""),
-        response=output.get("final_response", "")
+        intent=intent_tag,
+        retrieved_context=retrieved_ctx,
+        response=final_res
     )
     
-    return output["final_response"]
+    return final_res
