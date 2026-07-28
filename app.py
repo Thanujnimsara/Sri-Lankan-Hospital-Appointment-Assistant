@@ -1,6 +1,13 @@
 import streamlit as st
 import os
-os.environ["PYTHONIOENCODING"] = "utf-8"
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Ensure .env is always loaded with override regardless of working directory
+env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=env_path, override=True)
+load_dotenv(override=True)
+
 import uuid
 from src.database import get_database_status, get_recent_logs, get_intent_analytics
 
@@ -82,6 +89,13 @@ st.markdown("""
         align-items: center;
         gap: 8px;
     }
+    /* Hide Streamlit password reveal eye icon button */
+    button[aria-label="Show password text"],
+    button[aria-label="Hide password text"],
+    button[title="Show password text"],
+    button[title="Hide password text"] {
+        display: none !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -112,18 +126,6 @@ with st.sidebar:
     else:
         st.warning(f"⚠️ {db_msg}")
         
-    st.markdown("---")
-    st.subheader("🔑 API Key Setup")
-    
-    current_groq = os.environ.get("GROQ_API_KEY", "")
-    groq_key = st.text_input("GROQ API Key (Free)", value="" if not is_real_key(current_groq) else current_groq, type="password", help="Get a free key from console.groq.com")
-    if groq_key and is_real_key(groq_key):
-        os.environ["GROQ_API_KEY"] = groq_key.strip()
-        
-    current_openrouter = os.environ.get("OPENROUTER_API_KEY", "")
-    openrouter_key = st.text_input("OpenRouter / OpenAI API Key (Optional)", value="" if not is_real_key(current_openrouter) else current_openrouter, type="password")
-    if openrouter_key and is_real_key(openrouter_key):
-        os.environ["OPENROUTER_API_KEY"] = openrouter_key.strip()
         
     st.markdown("---")
     st.subheader("💡 Sample Queries")
@@ -180,7 +182,7 @@ with tab_chat:
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 st.chat_message("assistant").write(response)
             except Exception as e:
-                st.error("🔑 **GROQ API Key Required / Invalid!**\n\nPlease enter your **GROQ API Key** in the left sidebar under **API Key Setup**.\n\n👉 You can get a free key in 10 seconds at [console.groq.com](https://console.groq.com).")
+                st.error(f"⚠️ **Assistant Error:** {str(e)}")
 
 with tab_analytics:
     st.subheader("🍃 MongoDB Persistent Chat Logs & Analytics")

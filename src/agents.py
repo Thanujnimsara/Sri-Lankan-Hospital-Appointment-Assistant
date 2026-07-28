@@ -1,5 +1,13 @@
 import os
 import sys
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Ensure .env is always loaded with override regardless of working directory
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=env_path, override=True)
+load_dotenv(override=True)
+
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from langchain_groq import ChatGroq
@@ -7,16 +15,12 @@ from langchain_openai import ChatOpenAI
 from src.rag_pipeline import query_rag
 from src.database import save_chat_log
 
-os.environ["PYTHONIOENCODING"] = "utf-8"
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
-if hasattr(sys.stderr, "reconfigure"):
-    sys.stderr.reconfigure(encoding="utf-8")
-
-def clean_utf8(text: str) -> str:
-    if not isinstance(text, str):
-        return str(text)
-    return text.encode("utf-8", errors="ignore").decode("utf-8")
+def clean_utf8(text) -> str:
+    if text is None:
+        return ""
+    if isinstance(text, bytes):
+        return text.decode("utf-8", errors="ignore")
+    return str(text)
 
 # State Definition
 class AgentState(TypedDict):
@@ -25,10 +29,16 @@ class AgentState(TypedDict):
     retrieved_context: str
     final_response: str
 
+def is_valid_key(key: str) -> bool:
+    if not key:
+        return False
+    k = key.strip().lower()
+    return not (k.startswith("gsk_...") or k.startswith("sk-or-v1-...") or "your_" in k or "your-" in k or len(k) < 20)
+
 def get_router_llm():
     api_key = os.environ.get("GROQ_API_KEY", "").strip()
-    if not api_key or api_key.startswith("gsk_...") or api_key == "your-groq-api-key":
-        raise ValueError("GROQ_API_KEY is not set or invalid. Please enter a valid Groq API key (starts with 'gsk_') in the sidebar under Settings.")
+    if not is_valid_key(api_key):
+        raise ValueError("GROQ_API_KEY is not set or invalid. Please configure GROQ_API_KEY in your .env file.")
     return ChatGroq(
         model="llama-3.1-8b-instant",
         temperature=0,
@@ -39,14 +49,14 @@ def get_synthesis_llm():
     openrouter_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
     
-    if openrouter_key and not openrouter_key.startswith("sk-or-v1-...") and openrouter_key != "your-openrouter-api-key":
+    if is_valid_key(openrouter_key):
         base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         return ChatOpenAI(
             model="openai/gpt-4o-mini",
             openai_api_base=base_url,
             openai_api_key=openrouter_key
         )
-    elif openai_key:
+    elif is_valid_key(openai_key):
         return ChatOpenAI(
             model="gpt-4o-mini",
             openai_api_key=openai_key

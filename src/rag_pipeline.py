@@ -2,7 +2,6 @@ import os
 import shutil
 from langchain_core.documents import Document
 
-os.environ["PYTHONIOENCODING"] = "utf-8"
 
 try:
     from langchain_text_splitters import RecursiveCharacterTextSplitter
