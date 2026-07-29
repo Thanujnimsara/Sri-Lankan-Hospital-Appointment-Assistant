@@ -1,6 +1,34 @@
 import os
+import sys
 import shutil
 from langchain_core.documents import Document
+
+# Force UTF-8 I/O encoding & disable progress bar output for Windows compatibility
+os.environ["PYTHONIOENCODING"] = "utf-8"
+os.environ["PYTHONUTF8"] = "1"
+os.environ["TQDM_DISABLE"] = "1"
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
+
+for _stream_name in ("stdout", "stderr"):
+    _stream = getattr(sys, _stream_name, None)
+    if _stream is not None:
+        if hasattr(_stream, "reconfigure"):
+            try:
+                _stream.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
+def safe_print(msg):
+    try:
+        text = str(msg)
+        if hasattr(sys.stdout, "buffer"):
+            sys.stdout.buffer.write((text + "\n").encode("utf-8", errors="replace"))
+            sys.stdout.buffer.flush()
+        else:
+            sys.stdout.write(text.encode("ascii", errors="replace").decode("ascii") + "\n")
+    except Exception:
+        pass
 
 
 try:
@@ -30,7 +58,7 @@ def load_documents_utf8():
                         text = f.read()
                         documents.append(Document(page_content=text, metadata={"source": filename}))
                 except Exception as e:
-                    print(f"Error reading file {filename}: {e}")
+                    safe_print(f"Error reading file {filename}: {e}")
     return documents
 
 def build_or_load_vectorstore():
@@ -39,7 +67,7 @@ def build_or_load_vectorstore():
         return _vectorstore_instance
 
     try:
-        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2", show_progress=False)
         
         if os.path.exists(CHROMA_PATH) and os.listdir(CHROMA_PATH):
             try:
@@ -62,7 +90,7 @@ def build_or_load_vectorstore():
         )
         return _vectorstore_instance
     except Exception as e:
-        print(f"ChromaDB initialization notice: {e}")
+        safe_print(f"ChromaDB initialization notice: {e}")
         return None
 
 def query_rag(query: str, k: int = 3):
@@ -73,7 +101,7 @@ def query_rag(query: str, k: int = 3):
             if results:
                 return "\n\n".join([doc.page_content for doc in results])
     except Exception as err:
-        print(f"Chroma similarity search fallback: {err}")
+        safe_print(f"Chroma similarity search fallback: {err}")
     
     # Fail-safe in-memory retrieval over 20 UTF-8 healthcare documents
     documents = load_documents_utf8()

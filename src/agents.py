@@ -3,10 +3,26 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
+# Force UTF-8 I/O encoding & disable progress bar output for Windows compatibility
+os.environ["PYTHONIOENCODING"] = "utf-8"
+os.environ["PYTHONUTF8"] = "1"
+os.environ["TQDM_DISABLE"] = "1"
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
+
+for _stream_name in ("stdout", "stderr"):
+    _stream = getattr(sys, _stream_name, None)
+    if _stream is not None:
+        if hasattr(_stream, "reconfigure"):
+            try:
+                _stream.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
 # Ensure .env is always loaded with override regardless of working directory
 env_path = Path(__file__).resolve().parent.parent / ".env"
-load_dotenv(dotenv_path=env_path, override=True)
-load_dotenv(override=True)
+load_dotenv(dotenv_path=env_path, override=True, encoding="utf-8")
+load_dotenv(override=True, encoding="utf-8")
 
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
@@ -19,8 +35,13 @@ def clean_utf8(text) -> str:
     if text is None:
         return ""
     if isinstance(text, bytes):
-        return text.decode("utf-8", errors="ignore")
-    return str(text)
+        return text.decode("utf-8", errors="replace")
+    if isinstance(text, str):
+        return text.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+    try:
+        return str(text).encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+    except Exception:
+        return repr(text)
 
 # State Definition
 class AgentState(TypedDict):
